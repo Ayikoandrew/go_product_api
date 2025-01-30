@@ -1,9 +1,12 @@
 package handlers
 
 import (
+	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
+	"github.com/gorilla/mux"
 	"main.go/data"
 )
 
@@ -26,13 +29,18 @@ func (p *Product) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.Method == http.MethodPut {
+		p.UpdateProduct(w, r)
+		return
+	}
+
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 func (p *Product) GetProducts(w http.ResponseWriter, r *http.Request) {
 	prod := data.GetProducts()
 
-	if err := prod.FromJson(w); err != nil {
+	if err := prod.ToJson(w); err != nil {
 		p.l.Println("Error occurred", err)
 		return
 	}
@@ -41,7 +49,7 @@ func (p *Product) GetProducts(w http.ResponseWriter, r *http.Request) {
 func (p *Product) AddProduct(w http.ResponseWriter, r *http.Request) {
 	prod := &data.Product{}
 
-	if err := prod.ToJson(r.Body); err != nil {
+	if err := prod.FromJson(r.Body); err != nil {
 		p.l.Println("Error unmarshaling product")
 		http.Error(w, "Unmarshaling error", http.StatusInternalServerError)
 		return
@@ -50,4 +58,23 @@ func (p *Product) AddProduct(w http.ResponseWriter, r *http.Request) {
 	data.AddProduct(prod)
 
 	p.l.Println("Product added successfully")
+}
+
+func (p *Product) UpdateProduct(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	id := params["id"]
+
+	prod := &data.Product{}
+
+	i, err := strconv.Atoi(id)
+	if err != nil {
+		fmt.Println("Error with")
+	}
+
+	if err := data.UpdateProduct(i, prod); err == data.ErrProductNotFound {
+		http.Error(w, "Product not found", http.StatusNotFound)
+		return
+	}
+
+	p.l.Println("Product updated successfully")
 }
